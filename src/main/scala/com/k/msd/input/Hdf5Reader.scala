@@ -22,7 +22,7 @@ class HDF5Obj (m:Map[String, Any]) {
   }
 
   override def toString = {
-    map.map(kv => kv._1 + ":" + kv._2).mkString("\n")
+    map.map(kv => kv._1 + "[" + kv._2.getClass() + "]: " + kv._2).mkString("\n")
   }
 
 }

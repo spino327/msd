@@ -117,7 +117,7 @@
           <archive>
             <manifest>
               <addClasspath>true</addClasspath>
-              <mainClass>fully.qualified.MainClass</mainClass>
+              <mainClass>com.k.msd.MsdApp</mainClass>
             </manifest>
           </archive>
         </configuration>
