@@ -8,6 +8,13 @@ import scala.collection.JavaConverters._
 import ch.systemsx.cisd.hdf5._
 import ch.systemsx.cisd.hdf5.HDF5ObjectType._
 
+/**
+ * Immutable representation of the datasets on the hdf5 file.
+ *
+ * You can access the elements as it was a Map. e.g.
+ * val obj = new HDF5Obj(...)
+ * val value = obj[Type]("path/of/interest")
+ */
 class HDF5Obj (m:Map[String, Any]) {
   // primary constructor
   require(m != null)
@@ -22,24 +29,40 @@ class HDF5Obj (m:Map[String, Any]) {
   }
 
   override def toString = {
-    map.map(kv => kv._1 + "[" + kv._2.getClass() + "]: " + kv._2).mkString("\n")
+    map.map(kv => kv._1 + "[" + kv._2.getClass() + "]: '" + kv._2).mkString("'\n")
   }
 
 }
 
+/**
+ * Singleton that process an hdf5 file.
+ */
 object HDF5Reader {
 
   // member methods
-  def process(file_path:String) : HDF5Obj = {
+  /**
+   * Takes the path of a hdf5 file and returns a HDF5Obj representing the datasets on the file.
+   * It will contain the datasets that are listed on the paths list.
+   */
+  def process(file_path:String, paths:List[String]) : HDF5Obj = {
 
     val reader = HDF5Factory.openForReading(file_path)
     val map = new HashMap[String, Any]() //.++(paths) 
 
-    browse(reader, map, reader.getGroupMemberInformation("/", true))
+    for (path <- paths) {
+      browse(reader, map, List[HDF5LinkInformation](reader.getLinkInformation(path)).asJava)
+    }
 
     reader.close()
     
     return new HDF5Obj(map)
+  }
+
+  /**
+   * Takes the path of a hdf5 file and returns a HDF5Obj representing all the datasets on the file.
+   */
+  def process(file_path:String) : HDF5Obj = {
+    return process(file_path, "/"::Nil)
   }
 
   /**
@@ -88,7 +111,20 @@ object HDF5Reader {
         case GROUP => {
           browse(reader, kvPairs, reader.getGroupMemberInformation(info_path, true))
         }
-        case _ => {}
+        case NONEXISTENT  => {
+          // backtrack to check if parent is a compound object
+          val parentPath = info.getParentPath()
+          // println(s"Path $info_path is NONEXISTENT. Backtracking to check if parent '$parentPath' is compound")
+          reader.getDataSetInformation(parentPath).getTypeInformation().getDataClass() match {
+            case HDF5DataClass.COMPOUND => {
+              // TODO: it is better to just read the attribute we want from the compound dataset. Right now reads the entire compound. 
+              val compoundMap = reader.compound().read(parentPath, new HDF5CompoundDataMap().getClass()).asScala 
+              kvPairs(info_path) = compoundMap(info.getName())
+            }
+            case _ => println("ERROR: skipping path " + info_path)
+          }
+        }
+        case _ => println("ERROR: skipping path " + info_path)
       }
     }
   }

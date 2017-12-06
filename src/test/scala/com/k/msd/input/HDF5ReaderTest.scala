@@ -7,6 +7,7 @@ class HDF5ReaderTest {
 
   @Test
   def testReadTrackId = {
+    println("testReadTrackId")
     
     val mapExp = Map('track_id -> "TRAAAAW128F429D538",
       'artist_terms -> Array("hip hop", "underground rap", "g funk", "alternative rap",
@@ -21,6 +22,8 @@ class HDF5ReaderTest {
       'duration -> 218.93179)
       
     val h5file = "src/test/resources/sample.h5"
+    
+    // reads all the data of the hdf5 file
     val current = HDF5Reader.process(h5file)
    
     println(current)
@@ -31,7 +34,31 @@ class HDF5ReaderTest {
   }
 
   @Test
+  def testReadSpecificPaths = {
+    println("testReadSpecificPaths")
+    val specificPaths = List("/analysis/songs/track_id", "/metadata/songs/artist_name", "/metadata/songs/artist_id", "/metadata/songs/title")
+
+    val mapExp = Map ('artist_name -> "Casual",
+      'track_id -> "TRAAAAW128F429D538",
+      'artist_id -> "ARD7TVE1187B99BFB1",
+      'title -> "I Didn't Mean To")
+
+    val h5file = "src/test/resources/sample.h5"
+    
+    // reads just the specified paths of the hdf5 file
+    val current = HDF5Reader.process(h5file, specificPaths)
+
+    println(current)
+
+    assertEquals(mapExp('track_id), current[String]("/analysis/songs/track_id"))
+    assertEquals(mapExp('artist_name), current[String]("/metadata/songs/artist_name"))
+    assertEquals(mapExp('artist_id), current[String]("/metadata/songs/artist_id"))
+    assertEquals(mapExp('title), current[String]("/metadata/songs/title"))
+  }
+
+  @Test
   def testNegative = {
+    println("testNegative")
     
     val h5file = "src/test/resources/sample.h5"
     val current = HDF5Reader.process(h5file)

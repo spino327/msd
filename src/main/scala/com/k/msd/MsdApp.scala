@@ -28,11 +28,13 @@ object MsdApp {
     val file_paths =  sc.textFile(inputFile, numPartitions)
   
     // extracting data
+    val specificPaths = List("/analysis/songs/track_id", "/metadata/songs/artist_name", "/metadata/songs/artist_id", "/metadata/songs/title")
+
     val file_2_KV = (x: String) => {
       val file = new File(x)
      
       if (file.exists()) {
-        val current = HDF5Reader.process(x)
+        val current = HDF5Reader.process(x, specificPaths)
         
         val track_id = current[String]("/analysis/songs/track_id")
         val mapValues = Map[String, Any] (
