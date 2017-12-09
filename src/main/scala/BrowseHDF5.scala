@@ -21,13 +21,13 @@ object App {
           dsTypeInfo match {
             case HDF5DataClass.STRING => {
               if (numElem > 1)
-                println(s"number of $dsTypeInfo: $numElem")//reader.readStringArray(info_path).mkString(", "))
+                println(s"number of $dsTypeInfo: $numElem. " + reader.readStringArray(info_path).mkString(", "))
               else
                 println(reader.string().read(info_path))
             }
             case HDF5DataClass.FLOAT => {
               if (numElem > 1)
-                println(s"number of $dsTypeInfo: $numElem")//reader.readDoubleArray(info_path).mkString(", "))
+                println(s"number of $dsTypeInfo: $numElem. " + reader.readDoubleArray(info_path).mkString(", "))
               else
                 println(reader.float64().read(info_path))
             }

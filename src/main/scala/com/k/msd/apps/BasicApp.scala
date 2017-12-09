@@ -8,7 +8,7 @@ import org.apache.spark.SparkContext._
 
 object BasicApp {
 
-  def makeBasic(output:String):ReplApp = {
+  def makeApp (output:String):ReplApp = {
 
     val lambda = (input:RDD[Tuple2[String, Map[String, Any]]]) => {
 
@@ -17,7 +17,7 @@ object BasicApp {
 
       // individual artist_id
       val artistsRDD = input.map(kv => 
-          kv._2("artist_id").asInstanceOf[String] + " : " + kv._2("artist_name").asInstanceOf[String])
+          kv._2("artist_id").asInstanceOf[String] -> kv._2("artist_name").asInstanceOf[String])
       artistsRDD.distinct().cache()
       val numArtist = artistsRDD.count()
       artistsRDD.saveAsTextFile(output + "/artists")

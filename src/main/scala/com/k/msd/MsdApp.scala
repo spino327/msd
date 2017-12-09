@@ -29,7 +29,10 @@ object MsdApp {
     }, "Saving songs data."))
     
     // adding basic
-    repl.installOption("basic" -> BasicApp.makeBasic(output))
+    repl.installOption("basic" -> BasicApp.makeApp(output))
+
+    // adding PageRank
+    repl.installOption("pagerank" -> PageRankApp.makeApp(output))
   }
 
   def main (args: Array[String]) {
@@ -88,22 +91,6 @@ object MsdApp {
     // starting repl
     repl.loop(pairSongDataRDD)
 
-    // val numSongs = pairSongDataRDD.count()
-
-    // // how many songs don't have tempo
-    // val tempoRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
-    // tempoRDD.cache()
-
-    // val noTempo = tempoRDD.count()
-    // println(tempoRDD.take(10).mkString("\n"))
-
-    // println(s"numSongs: $numSongs, noTempo: $noTempo")
-    // // pairSongDataRDD.saveAsTextFile(outputFile)
-
-    // tempoRDD.saveAsTextFile(outputFile)
-
-
-    // val energyRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
   }
 }
 
