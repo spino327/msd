@@ -15,10 +15,22 @@ import Console.{GREEN, RED, RESET, YELLOW_B, UNDERLINED}
 
 object MsdApp {
 
+  // repl variable
   private val repl = new Repl()
-  repl.installOption("pagerank" -> new ReplApp((x) => {
-    println("hahahahah: " + x.count())
-  }, "pagerank options"))
+
+  /**
+   * Installing REPL applications
+   */
+  def installingApps(output:String):Unit = {
+    // adding saving songs data app
+    repl.installOption("save_data" -> new ReplApp((x) => {
+      println("Saving songs data...")
+      x.saveAsTextFile(output + "/songs_data")
+    }, "Saving songs data."))
+    
+    // adding basic
+    repl.installOption("basic" -> BasicApp.makeBasic(output))
+  }
 
   def main (args: Array[String]) {
 
@@ -30,12 +42,15 @@ object MsdApp {
     val inputFile = args(0)
     val outputFile = args(1)
     val numPartitions = args(2).toInt
-    val conf = new SparkConf().setAppName("MillionSongDataset Spark") 
+  
+    // installing apps
+    installingApps(outputFile)
 
     // Create a Scala Spark Context.
+    val conf = new SparkConf().setAppName("MillionSongDataset Spark") 
     val sc = new SparkContext(conf)
-      
-    // extracting data
+    
+    // paths to extract
     val specificPaths = List(
       "/metadata/songs/artist_id",    // Echo Nest ID: String
       "/metadata/songs/artist_name", 
@@ -48,10 +63,10 @@ object MsdApp {
       "/analysis/songs/tempo",
       "/metadata/similar_artists")
 
-    // extracted data rdd
     // Load our input data.
     val file_paths =  sc.textFile(inputFile, numPartitions)
 
+    // Extracted data RDD
     Preprocessor.setPaths(specificPaths)
     Preprocessor.setMapBuilder((h5:HDF5Obj) => Map[String, Any] (
         "artist_id" -> h5[String]("/metadata/songs/artist_id"),
@@ -63,54 +78,32 @@ object MsdApp {
         "year" -> h5[Int]("/musicbrainz/songs/year"),
         "artist_location" -> h5[String]("/metadata/songs/artist_location"),
         "tempo" -> h5[Double]("/analysis/songs/tempo"),
-        "similar_artists" -> h5[Array[String]]("/metadata/similar_artists")
+        "similar_artists" -> h5[Array[String]]("/metadata/similar_artists").toList
       ))
 
     val pairSongDataRDD = Preprocessor.makeRDD(file_paths, sc)
     // caching the rdd since we'll reuse it several times later
     pairSongDataRDD.cache()
 
-    // #####################
-    // # REPL
-    // #####################  
-    // val printMsg = (x:String) => Console.println(s"${RESET}${GREEN}$x${RESET}")
-    // val printPrompt = () => Console.print(s"${RESET}${GREEN}${UNDERLINED} > ${RESET}")
-    // val printErr = (x:String) => Console.println(s"${RESET}${RED}$x${RESET}") 
-
-    // printMsg("Welcome to the REPL. Typed 'help' for options")
-
-    // var poisonPill = false
-    // while (poisonPill != true) {
-     
-    //   printPrompt()
-    //   val option = StdIn.readLine()
-    
-    //   option match {
-    //     case "help" => println("Go to the doctor")
-    //     case "exit" => { printErr("killing"); poisonPill = true}
-    //     case _ => printErr(s"No recoignized: $option")
-    //   }
-    // }
+    // starting repl
     repl.loop(pairSongDataRDD)
 
-    sys.exit(-1)
+    // val numSongs = pairSongDataRDD.count()
 
-    val numSongs = pairSongDataRDD.count()
+    // // how many songs don't have tempo
+    // val tempoRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
+    // tempoRDD.cache()
 
-    // how many songs don't have tempo
-    val tempoRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
-    tempoRDD.cache()
+    // val noTempo = tempoRDD.count()
+    // println(tempoRDD.take(10).mkString("\n"))
 
-    val noTempo = tempoRDD.count()
-    println(tempoRDD.take(10).mkString("\n"))
+    // println(s"numSongs: $numSongs, noTempo: $noTempo")
+    // // pairSongDataRDD.saveAsTextFile(outputFile)
 
-    println(s"numSongs: $numSongs, noTempo: $noTempo")
-    // pairSongDataRDD.saveAsTextFile(outputFile)
-
-    tempoRDD.saveAsTextFile(outputFile)
+    // tempoRDD.saveAsTextFile(outputFile)
 
 
-    val energyRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
+    // val energyRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
   }
 }
 

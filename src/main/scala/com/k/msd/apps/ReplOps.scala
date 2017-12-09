@@ -34,7 +34,6 @@ class Repl {
 
       option match {
         case "help" => {
-          printMsg("Help: ")
           processMap.foreach(x => Console.println(s"${RESET}${GREEN}" + x._1 + s" : ${RESET}" + x._2.help()))
           Console.println(s"${RESET}${GREEN}exit : ${RESET}exits the REPL")
         }
@@ -62,4 +61,9 @@ class ReplApp(lambda:Function1[RDD[Tuple2[String, Map[String, Any]]], Unit], hel
   def process (inputRDD:RDD[Tuple2[String, Map[String, Any]]]) : Unit = {
     lambda(inputRDD)
   } 
+}
+
+object ReplHelper {
+  def printMsg(x:String) = Console.println(s"${RESET}${GREEN}$x${RESET}")
+  def printErr(x:String) = Console.println(s"${RESET}${RED}$x${RESET}")
 }
