@@ -1,37 +1,24 @@
 
 package com.k.msd
 
-import java.io.File
 import com.k.msd.input._
+import com.k.msd.apps._
+
+import java.io.File
+
 import org.apache.spark._
 import org.apache.spark.SparkContext._
+
 import scala.sys
+import scala.io.StdIn
+import Console.{GREEN, RED, RESET, YELLOW_B, UNDERLINED}
 
 object MsdApp {
 
-  def file_2_KV (x: String, specificPaths: List[String]) : Tuple2[String, Map[String, Any]] = {
-    val file = new File(x)
-
-    if (file.exists()) {
-      val current = HDF5Reader.process(x, specificPaths)
-
-      val track_id = current[String]("/analysis/songs/track_id")
-      val mapValues = Map[String, Any] (
-        "/metadata/songs/artist_id" -> current[String]("/metadata/songs/artist_id"),
-        "/metadata/songs/artist_name" -> current[String]("/metadata/songs/artist_name"),
-        "/metadata/songs/title" -> current[String]("/metadata/songs/title"),
-        "/metadata/songs/release" -> current[String]("/metadata/songs/release"),
-        "/analysis/songs/track_id" -> current[String]("/analysis/songs/track_id"),
-        "/metadata/songs/song_id" -> current[String]("/metadata/songs/song_id"),
-        "/musicbrainz/songs/year" -> current[Int]("/musicbrainz/songs/year"),
-        "/metadata/songs/artist_location" -> current[String]("/metadata/songs/artist_location"),
-        "/analysis/songs/tempo" -> current[Double]("/analysis/songs/tempo")
-      )
-      return (track_id -> mapValues)
-    }
-    else
-      return null
-  }
+  private val repl = new Repl()
+  repl.installOption("pagerank" -> new ReplApp((x) => {
+    println("hahahahah: " + x.count())
+  }, "pagerank options"))
 
   def main (args: Array[String]) {
 
@@ -47,10 +34,7 @@ object MsdApp {
 
     // Create a Scala Spark Context.
     val sc = new SparkContext(conf)
-
-    // Load our input data.
-    val file_paths =  sc.textFile(inputFile, numPartitions)
-  
+      
     // extracting data
     val specificPaths = List(
       "/metadata/songs/artist_id",    // Echo Nest ID: String
@@ -61,12 +45,55 @@ object MsdApp {
       "/metadata/songs/song_id",      // The Echo Nest song ID, note that a song can be associated with many tracks (with very slight audio differences)
       "/musicbrainz/songs/year",      // year when this song was released, according to musicbrainz.org
       "/metadata/songs/artist_location",
-      "/analysis/songs/tempo")
+      "/analysis/songs/tempo",
+      "/metadata/similar_artists")
 
     // extracted data rdd
-    val pairSongDataRDD = file_paths.map((x:String) => file_2_KV(x, specificPaths))
+    // Load our input data.
+    val file_paths =  sc.textFile(inputFile, numPartitions)
+
+    Preprocessor.setPaths(specificPaths)
+    Preprocessor.setMapBuilder((h5:HDF5Obj) => Map[String, Any] (
+        "artist_id" -> h5[String]("/metadata/songs/artist_id"),
+        "artist_name" -> h5[String]("/metadata/songs/artist_name"),
+        "title" -> h5[String]("/metadata/songs/title"),
+        "release" -> h5[String]("/metadata/songs/release"),
+        "track_id" -> h5[String]("/analysis/songs/track_id"),
+        "song_id" -> h5[String]("/metadata/songs/song_id"),
+        "year" -> h5[Int]("/musicbrainz/songs/year"),
+        "artist_location" -> h5[String]("/metadata/songs/artist_location"),
+        "tempo" -> h5[Double]("/analysis/songs/tempo"),
+        "similar_artists" -> h5[Array[String]]("/metadata/similar_artists")
+      ))
+
+    val pairSongDataRDD = Preprocessor.makeRDD(file_paths, sc)
     // caching the rdd since we'll reuse it several times later
     pairSongDataRDD.cache()
+
+    // #####################
+    // # REPL
+    // #####################  
+    // val printMsg = (x:String) => Console.println(s"${RESET}${GREEN}$x${RESET}")
+    // val printPrompt = () => Console.print(s"${RESET}${GREEN}${UNDERLINED} > ${RESET}")
+    // val printErr = (x:String) => Console.println(s"${RESET}${RED}$x${RESET}") 
+
+    // printMsg("Welcome to the REPL. Typed 'help' for options")
+
+    // var poisonPill = false
+    // while (poisonPill != true) {
+     
+    //   printPrompt()
+    //   val option = StdIn.readLine()
+    
+    //   option match {
+    //     case "help" => println("Go to the doctor")
+    //     case "exit" => { printErr("killing"); poisonPill = true}
+    //     case _ => printErr(s"No recoignized: $option")
+    //   }
+    // }
+    repl.loop(pairSongDataRDD)
+
+    sys.exit(-1)
 
     val numSongs = pairSongDataRDD.count()
 
@@ -81,6 +108,9 @@ object MsdApp {
     // pairSongDataRDD.saveAsTextFile(outputFile)
 
     tempoRDD.saveAsTextFile(outputFile)
+
+
+    val energyRDD = pairSongDataRDD.filter({case (key, value) => value("/analysis/songs/tempo").asInstanceOf[Double] == 0.0})
   }
 }
 
